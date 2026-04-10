@@ -84,7 +84,7 @@ func (cs *ClimateSimulator) Update() {
 	cs.mu.Lock()
 	defer cs.mu.Unlock()
 
-	cs.timeOfDay += 0.1
+	cs.timeOfDay += 0.02 // Incrementa o tempo do dia
 	if cs.timeOfDay >= 24 {
 		cs.timeOfDay = 0
 		cs.dayOfYear++
@@ -178,7 +178,7 @@ func (cs *ClimateSimulator) Subscribe() chan ClimateData {
 func (cs *ClimateSimulator) Start() {
 	cs.running = true
 	go func() {
-		ticker := time.NewTicker(100 * time.Millisecond)
+		ticker := time.NewTicker(1 * time.Second)
 		for cs.running {
 			<-ticker.C
 			cs.Update()
@@ -377,6 +377,7 @@ type Server struct {
 	upgrader      websocket.Upgrader
 	clients       map[*websocket.Conn]bool
 	clientsMu     sync.RWMutex
+	broadcastMu   sync.Mutex 
 	mqttClient    mqtt.Client
 }
 
@@ -508,14 +509,28 @@ func (s *Server) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) Broadcast(data interface{}) {
-	s.clientsMu.RLock()
-	defer s.clientsMu.RUnlock()
+    s.clientsMu.RLock()
+    clients := make([]*websocket.Conn, 0, len(s.clients))
+    for client := range s.clients {
+        clients = append(clients, client)
+    }
+    s.clientsMu.RUnlock()
 
-	for client := range s.clients {
-		if err := client.WriteJSON(data); err != nil {
-			client.Close()
-		}
-	}
+    for _, client := range clients {
+        // Cada write em sua própria goroutine com lock
+        go func(c *websocket.Conn) {
+            s.broadcastMu.Lock()
+            defer s.broadcastMu.Unlock()
+            
+            err := c.WriteJSON(data)
+            if err != nil {
+                s.clientsMu.Lock()
+                delete(s.clients, c)
+                s.clientsMu.Unlock()
+                c.Close()
+            }
+        }(client)
+    }
 }
 
 func (s *Server) StartBroadcasting() {
