@@ -97,6 +97,14 @@ Ideal para aprender conceitos de IoT, MQTT, WebSocket e visualização 3D sem ne
 
 ### Clone o repositório
 
+# Instalar docker 
+
+```bash
+brew install --cask docker
+```
+
+
+
 ```bash
 git clone https://github.com/seu-usuario/agrosim.git
 cd agrosim
