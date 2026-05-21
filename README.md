@@ -103,6 +103,15 @@ Ideal para aprender conceitos de IoT, MQTT, WebSocket e visualização 3D sem ne
 brew install --cask docker
 ```
 
+Abrir docker na sua máquina, confirme que está rodando com:
+```bash
+docker info
+```
+
+Rode esse comando para criar e executar o container em segundo plano:
+```bash
+docker run -d --name mosquitto-broker -p 1884:1883 -p 9002:9001 eclipse-mosquitto:2
+```
 
 
 ```bash
@@ -120,7 +129,11 @@ docker run -d \
 ```
 
 # Baixa dependências
-```go mod tidy```
+```bash
+cd backend
+
+go mod tidy
+```
 
 # Inicia servidor
 ```go run main.go```
